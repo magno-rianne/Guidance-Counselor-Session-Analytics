@@ -1,0 +1,405 @@
+/* GCSA Tool Styles - Light Background with Soft Blue Theme */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Header Styles */
+.app-header {
+    text-align: center;
+    margin-bottom: 30px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+    backdrop-filter: blur(8px);
+}
+
+.app-header h1 {
+    color: #0096FF;
+    margin-bottom: 20px;
+    font-size: 2.5em;
+    font-weight: 300;
+}
+
+.panel-switcher {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.panel-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 25px;
+    background: rgba(255, 255, 255, 0.7);
+    color: #0096FF;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.panel-btn:hover {
+    background: rgba(0, 150, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.panel-btn.active {
+    background: #0096FF;
+    color: white;
+    box-shadow: 0 4px 15px rgba(0, 150, 255, 0.3);
+}
+
+/* Panel Styles */
+.panel {
+    display: none;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.panel.active {
+    display: block;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Setup Panel Styles */
+.setup-container {
+    max-width: 500px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.setup-container h2 {
+    color: #0096FF;
+    margin-bottom: 30px;
+    font-size: 2em;
+    font-weight: 300;
+}
+
+.input-group {
+    margin-bottom: 25px;
+    text-align: left;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #555;
+    font-weight: 500;
+}
+
+.input-group input,
+.input-group textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid rgba(0, 150, 255, 0.2);
+    border-radius: 15px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.input-group input:focus,
+.input-group textarea:focus {
+    outline: none;
+    border-color: #0096FF;
+    box-shadow: 0 0 0 3px rgba(0, 150, 255, 0.1);
+}
+
+.input-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Button Styles */
+.primary-btn,
+.secondary-btn {
+    padding: 14px 28px;
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.primary-btn {
+    background: linear-gradient(135deg, #0096FF 0%, #0066CC 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(0, 150, 255, 0.3);
+}
+
+.primary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 150, 255, 0.4);
+}
+
+.secondary-btn {
+    background: rgba(255, 255, 255, 0.8);
+    color: #0096FF;
+    border: 2px solid #0096FF;
+}
+
+.secondary-btn:hover {
+    background: #0096FF;
+    color: white;
+    transform: translateY(-2px);
+}
+
+/* Session Panel Styles */
+.session-container {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+    align-items: start;
+}
+
+.video-container {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+}
+
+.video-element,
+.canvas-element {
+    width: 100%;
+    height: auto;
+    border-radius: 20px;
+}
+
+.canvas-element {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+
+.controls-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.session-timer {
+    text-align: center;
+    padding: 15px;
+    background: rgba(0, 150, 255, 0.1);
+    border-radius: 15px;
+    border: 2px solid rgba(0, 150, 255, 0.2);
+}
+
+.timer-display {
+    font-size: 2em;
+    font-weight: 700;
+    color: #0096FF;
+    font-family: 'Courier New', monospace;
+}
+
+.session-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 15px;
+    text-align: center;
+    justify-content: center;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #4caf50;
+    animation: pulse 2s infinite;
+}
+
+.status-dot.calm {
+    background: #4caf50;
+}
+
+.status-dot.vigilance {
+    background: #ff9800;
+}
+
+.status-dot.tense {
+    background: #f44336;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+}
+
+.status-text {
+    font-weight: 600;
+    font-size: 18px;
+    color: #333;
+}
+
+.real-time-prompt {
+    padding: 15px;
+    background: rgba(0, 150, 255, 0.1);
+    border-radius: 15px;
+    border-left: 4px solid #0096FF;
+}
+
+.prompt-box {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 150, 255, 0.2);
+}
+
+.prompt-box p {
+    margin: 0;
+    color: #0096FF;
+    font-weight: 500;
+}
+
+/* Analytics Panel Styles */
+.analytics-container {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.session-info {
+    text-align: center;
+    padding: 20px;
+    background: rgba(0, 150, 255, 0.05);
+    border-radius: 15px;
+}
+
+.session-info h2 {
+    color: #0096FF;
+    margin-bottom: 10px;
+}
+
+.session-info p {
+    color: #666;
+    font-style: italic;
+}
+
+.chart-container {
+    background: rgba(255, 255, 255, 0.8);
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(31, 38, 135, 0.1);
+}
+
+.metrics-summary {
+    background: rgba(255, 255, 255, 0.8);
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(31, 38, 135, 0.1);
+}
+
+.metrics-summary h3 {
+    color: #0096FF;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.metrics-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.metric-card {
+    background: linear-gradient(135deg, #0096FF 0%, #0066CC 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0, 150, 255, 0.3);
+}
+
+.metric-card h4 {
+    margin-bottom: 10px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.metric-card p {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.actionable-insights {
+    background: rgba(255, 255, 255, 0.8);
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(31, 38, 135, 0.1);
+}
+
+.actionable-insights h3 {
+    color: #0096FF;
+    margin-bottom: 15px;
+}
+
+#insights-content {
+    line-height: 1.6;
+    color: #555;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .session-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .metrics-cards {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+    
+    .app-header h1 {
+        font-size: 2em;
+    }
+    
+    .panel-switcher {
+        flex-wrap: wrap;
+    }
+    
+    .panel-btn {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+}

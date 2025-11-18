@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guidance Counselor Session Analytics (GCSA) Tool</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="app-header">
+            <h1>Guidance Counselor Session Analytics</h1>
+            <div class="panel-switcher">
+                <button class="panel-btn active" data-panel="setup">Setup</button>
+                <button class="panel-btn" data-panel="session">Session</button>
+                <button class="panel-btn" data-panel="analytics">Analytics</button>
+            </div>
+        </header>
+
+        <!-- Setup Panel -->
+        <div id="setup-panel" class="panel active">
+            <div class="setup-container">
+                <h2>Session Setup</h2>
+                <div class="input-group">
+                    <label for="session-name">Session Name</label>
+                    <input type="text" id="session-name" placeholder="Enter session name">
+                </div>
+                <div class="input-group">
+                    <label for="session-details">Session Details (Optional)</label>
+                    <textarea id="session-details" placeholder="Enter session details"></textarea>
+                </div>
+                <button id="start-camera-btn" class="primary-btn">Start Camera</button>
+            </div>
+        </div>
+
+        <!-- Session Panel -->
+        <div id="session-panel" class="panel">
+            <div class="session-container">
+                <div class="video-container">
+                    <video id="video-input" class="video-element" autoplay muted playsinline></video>
+                    <canvas id="output-canvas" class="canvas-element"></canvas>
+                </div>
+                
+                <div class="controls-container">
+                    <div class="session-timer">
+                        <div class="timer-display">
+                            <span id="timer-text">00:00</span>
+                        </div>
+                    </div>
+                    
+                    <div class="session-controls">
+                        <button id="start-session-btn" class="primary-btn">Start Session</button>
+                        <button id="stop-session-btn" class="secondary-btn">Stop Session</button>
+                    </div>
+                    
+                    <div class="status-indicator">
+                        <span id="status-dot" class="status-dot calm"></span>
+                        <span id="status-text">CALM</span>
+                    </div>
+                    
+                    <div class="real-time-prompt">
+                        <div id="prompt-box" class="prompt-box">
+                            <p id="prompt-text">Ready to start session</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Panel -->
+        <div id="analytics-panel" class="panel">
+            <div class="analytics-container">
+                <div class="session-info">
+                    <h2 id="analytics-session-name">Session Name</h2>
+                    <p id="analytics-session-details">Session Details</p>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="stress-chart"></canvas>
+                </div>
+                
+                <div class="metrics-summary">
+                    <h3>Key Metrics Summary</h3>
+                    <div class="metrics-cards">
+                        <div class="metric-card">
+                            <h4>% Time in Fidgeting State</h4>
+                            <p id="fidgeting-percentage">0%</p>
+                        </div>
+                        <div class="metric-card">
+                            <h4>% Time in Tension State</h4>
+                            <p id="tension-percentage">0%</p>
+                        </div>
+                        <div class="metric-card">
+                            <h4>% Time in Avoidance State</h4>
+                            <p id="avoidance-percentage">0%</p>
+                        </div>
+                        <div class="metric-card">
+                            <h4>Average Stress Score</h4>
+                            <p id="average-stress">0</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="actionable-insights">
+                    <h3>Actionable Insights</h3>
+                    <div id="insights-content">
+                        <p>Complete a session to see insights.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
