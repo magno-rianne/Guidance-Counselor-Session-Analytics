@@ -1,6 +1,6 @@
 # Guidance Counselor Session Analytics (GCSA) Tool
 
-A comprehensive web application built with vanilla JavaScript, MediaPipe, and Node.js that analyzes student behavior during counseling sessions through real-time pose detection and stress analysis.
+A comprehensive web application built with JavaScript, MediaPipe, and Node.js that analyzes student behavior during counseling sessions through real-time pose detection and stress analysis.
 
 ## Features
 
