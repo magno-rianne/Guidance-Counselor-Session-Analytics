@@ -12,6 +12,11 @@ let timerInterval = null;
 let sessionStartTime = null;
 let sessionDuration = 0;
 
+let stressHistory = [];
+const SMOOTHING_WINDOW = 30; // Average over 30 frames (about 1 second)
+let lastStatusUpdate = 0;
+const STATUS_UPDATE_INTERVAL = 1000; // Update status every 1.5 seconds
+
 // Metrics tracking variables
 let previousLandmarks = null;
 let previousTimestamp = null;
@@ -22,9 +27,15 @@ let headYawAngle = 0;
 
 // Weights for stress score calculation - more balanced
 const WEIGHTS = {
-    KINETIC: 0.3,    // Reduced from 0.4
-    POSTURAL: 0.3,   // Reduced from 0.4
-    ENGAGEMENT: 0.4  // Increased from 0.2
+    KINETIC: 0.6,      // Increased from 0.3 to 0.7
+    POSTURAL: 0.2,    // Reduced from 0.3 to 0.15
+    ENGAGEMENT: 0.2   // Reduced from 0.4 to 0.15
+};
+
+const MOVEMENT_THRESHOLDS = {
+    CALM: 30,          // Minimal movement threshold
+    VIGILANCE: 60,     // Moderate movement threshold
+    TENSE: 80          // High movement threshold
 };
 
 // Initialize the application
@@ -193,7 +204,11 @@ function onFaceMeshResults(results) {
     }
 }
 
-// Calculate metrics
+// Add accumulators for better data logging
+let accumulatedKineticStress = 0;
+let kineticStressSampleCount = 0;
+
+// Modified calculateMetrics to accumulate data
 function calculateMetrics(landmarks) {
     const currentTime = Date.now();
     
@@ -207,39 +222,53 @@ function calculateMetrics(landmarks) {
     // Calculate time difference
     const timeDiff = (currentTime - previousTimestamp) / 1000; // Convert to seconds
 
-    // Calculate kinetic stress
+    // Calculate metrics
     const kineticStress = calculateKineticStress(landmarks, timeDiff);
-
-    // Calculate postural tension
     const posturalTension = calculatePosturalTension(landmarks);
-
-    // Calculate engagement score
     const engagementScore = calculateEngagementScore();
-
-    // Calculate master stress score
     const masterStressScore = calculateMasterStressScore(kineticStress, posturalTension, engagementScore);
 
-    // Update status indicator
-    updateStatusIndicator(masterStressScore);
+    // Accumulate kinetic stress for logging
+    accumulatedKineticStress += kineticStress;
+    kineticStressSampleCount++;
 
-    // Update real-time prompt
-    updateRealTimePrompt(masterStressScore, kineticStress, posturalTension, engagementScore);
+    // Add to history for smoothing
+    stressHistory.push(masterStressScore);
+    if (stressHistory.length > SMOOTHING_WINDOW) {
+        stressHistory.shift();
+    }
+
+    // Calculate smoothed stress score
+    const smoothedStress = stressHistory.reduce((a, b) => a + b, 0) / stressHistory.length;
+
+    // Only update status at specified intervals
+    if (currentTime - lastStatusUpdate > STATUS_UPDATE_INTERVAL) {
+        updateStatusIndicator(smoothedStress);
+        updateRealTimePrompt(smoothedStress, kineticStress, posturalTension, engagementScore);
+        lastStatusUpdate = currentTime;
+    }
 
     // Store previous landmarks and timestamp
     previousLandmarks = landmarks;
     previousTimestamp = currentTime;
 }
 
+
 // Calculate kinetic stress
 function calculateKineticStress(landmarks, timeDiff) {
     let totalVelocity = 0;
     let velocityCount = 0;
+    let legMovementVelocity = 0;
+    let handMovementVelocity = 0;
+    let handToFaceScore = 0;
 
-    // Calculate wrist and ankle velocities
-    const wristIndices = [15, 16]; // Left and right wrist
-    const ankleIndices = [27, 28]; // Left and right ankle
+    // Focus on legs, ankles, and hands
+    const legIndices = [25, 26, 27, 28]; // Knees and ankles
+    const handIndices = [15, 16];         // Wrists
+    const faceIndices = [0, 2, 5];        // Nose and cheeks
 
-    [...wristIndices, ...ankleIndices].forEach(index => {
+    // Calculate leg movement velocity
+    legIndices.forEach(index => {
         if (previousLandmarks[index] && landmarks[index]) {
             const prev = previousLandmarks[index];
             const curr = landmarks[index];
@@ -252,18 +281,69 @@ function calculateKineticStress(landmarks, timeDiff) {
             const velocity = distance / timeDiff;
             totalVelocity += velocity;
             velocityCount++;
+            
+            // Track leg movement separately for extra weight
+            if (index >= 27) { // Ankle indices
+                legMovementVelocity += velocity;
+            }
         }
     });
 
-    // Check hand-to-face proximity
-    checkHandToFaceProximity(landmarks);
+    // Calculate hand movement velocity
+    handIndices.forEach(index => {
+        if (previousLandmarks[index] && landmarks[index]) {
+            const prev = previousLandmarks[index];
+            const curr = landmarks[index];
+            
+            const distance = Math.sqrt(
+                Math.pow(curr.x - prev.x, 2) + 
+                Math.pow(curr.y - prev.y, 2)
+            );
+            
+            const velocity = distance / timeDiff;
+            totalVelocity += velocity;
+            velocityCount++;
+            handMovementVelocity += velocity;
+        }
+    });
 
-    // Normalize and return kinetic stress score (0-100)
-    // Much more conservative scaling - normal movement should be low
+    // Check hand-to-face proximity with continuous scoring
+    handIndices.forEach(handIndex => {
+        faceIndices.forEach(faceIndex => {
+            if (landmarks[handIndex] && landmarks[faceIndex]) {
+                const hand = landmarks[handIndex];
+                const face = landmarks[faceIndex];
+                
+                const distance = Math.sqrt(
+                    Math.pow(hand.x - face.x, 2) + 
+                    Math.pow(hand.y - face.y, 2)
+                );
+                
+                // Convert distance to a continuous score (0-20)
+                // Closer distance = higher score
+                if (distance < 0.15) {
+                    handToFaceScore = Math.max(handToFaceScore, (0.15 - distance) * 133.33);
+                }
+            }
+        });
+    });
+
+    // Calculate average velocity
     const avgVelocity = velocityCount > 0 ? totalVelocity / velocityCount : 0;
-    const normalizedVelocity = Math.min(avgVelocity * 200, 100); // Reduced from 1000 to 200
     
-    return normalizedVelocity;
+    // Apply scaling to get a base score (0-100)
+    let baseScore = Math.min(avgVelocity * 400, 100); // Adjusted multiplier
+    
+    // Add continuous leg movement bonus (0-30)
+    const legBonus = Math.min(legMovementVelocity * 200, 30);
+    
+    // Combine scores
+    let kineticStress = baseScore + legBonus + handToFaceScore;
+    
+    // Cap at 100
+    kineticStress = Math.min(kineticStress, 100);
+    
+    return kineticStress;
 }
 
 // Check hand-to-face proximity
@@ -414,12 +494,23 @@ function calculateHeadOrientation(faceLandmarks) {
 
 // Calculate master stress score
 function calculateMasterStressScore(kineticStress, posturalTension, engagementScore) {
+    // More aggressive weighting for kinetic stress since it's our primary indicator
     const weightedScore = 
         (WEIGHTS.KINETIC * kineticStress) + 
         (WEIGHTS.POSTURAL * posturalTension) + 
         (WEIGHTS.ENGAGEMENT * engagementScore);
     
-    return Math.min(Math.round(weightedScore), 100);
+    // Apply a non-linear scaling to amplify higher stress values
+    let amplifiedScore;
+    if (weightedScore < 30) {
+        amplifiedScore = weightedScore * 0.8; // Slightly reduce low scores
+    } else if (weightedScore < 60) {
+        amplifiedScore = weightedScore * 1.2; // Amplify mid-range scores
+    } else {
+        amplifiedScore = weightedScore * 1.5; // Significantly amplify high scores
+    }
+    
+    return Math.min(Math.round(amplifiedScore), 100);
 }
 
 // Update status indicator - more reasonable thresholds
@@ -427,43 +518,56 @@ function updateStatusIndicator(stressScore) {
     const statusDot = document.getElementById('status-dot');
     const statusText = document.getElementById('status-text');
 
-    if (stressScore < 25) {
-        statusDot.className = 'status-dot calm';
-        statusText.textContent = 'CALM';
-    } else if (stressScore < 50) {
-        statusDot.className = 'status-dot vigilance';
-        statusText.textContent = 'VIGILANCE';
+    // Add hysteresis to prevent flickering
+    const currentStatus = statusText.textContent.toLowerCase();
+    
+    if (stressScore < MOVEMENT_THRESHOLDS.CALM) {
+        if (currentStatus !== 'calm') {
+            statusDot.className = 'status-dot calm';
+            statusText.textContent = 'CALM';
+        }
+    } else if (stressScore < MOVEMENT_THRESHOLDS.VIGILANCE) {
+        if (currentStatus !== 'vigilance') {
+            statusDot.className = 'status-dot vigilance';
+            statusText.textContent = 'VIGILANCE';
+        }
     } else {
-        statusDot.className = 'status-dot tense';
-        statusText.textContent = 'TENSE';
+        if (currentStatus !== 'tense') {
+            statusDot.className = 'status-dot tense';
+            statusText.textContent = 'TENSE';
+        }
     }
 }
 
 // Update real-time prompt - adjusted thresholds
 function updateRealTimePrompt(stressScore, kineticStress, posturalTension, engagementScore) {
     const promptText = document.getElementById('prompt-text');
-    let suggestion = '';
+    const currentPrompt = promptText.textContent;
+    let newPrompt = '';
 
-    if (stressScore < 25) {
-        suggestion = 'Good posture and engagement maintained.';
-    } else if (stressScore < 50) {
+    if (stressScore < MOVEMENT_THRESHOLDS.CALM) {
+        newPrompt = 'Excellent stillness maintained. Minimal movement detected.';
+    } else if (stressScore < MOVEMENT_THRESHOLDS.VIGILANCE) {
         if (kineticStress > 40) {
-            suggestion = 'Suggestion: Offer a pause to reduce fidgeting.';
-        } else if (posturalTension > 40) {
-            suggestion = 'Suggestion: Suggest a posture adjustment.';
-        } else if (engagementScore > 40) {
-            suggestion = 'Suggestion: Check engagement level.';
+            newPrompt = 'Suggestion: Noticeable leg/hand movement detected. Consider grounding techniques.';
         } else {
-            suggestion = 'Suggestion: Monitor stress indicators.';
+            newPrompt = 'Suggestion: Slight uneasiness detected. Monitor movement patterns.';
         }
     } else {
-        suggestion = 'Suggestion: Consider taking a break or changing approach.';
+        if (kineticStress > 60) {
+            newPrompt = 'Suggestion: High movement and hand-to-face contact detected. Consider pause.';
+        } else {
+            newPrompt = 'Suggestion: Significant tension detected. Recommend relaxation break.';
+        }
     }
 
-    promptText.textContent = suggestion;
+    // Only update if prompt actually changed
+    if (newPrompt !== currentPrompt) {
+        promptText.textContent = newPrompt;
+    }
 }
 
-// Start session
+// Reset accumulators when starting session
 function startSession() {
     if (!isCameraActive) {
         alert('Please start the camera first.');
@@ -475,6 +579,14 @@ function startSession() {
     handToFaceCount = 0;
     previousLandmarks = null;
     previousTimestamp = null;
+    
+    // Reset smoothing variables
+    stressHistory = [];
+    lastStatusUpdate = 0;
+    
+    // Reset accumulators
+    accumulatedKineticStress = 0;
+    kineticStressSampleCount = 0;
     
     // Reset and start timer
     resetTimer();
@@ -542,23 +654,35 @@ function stopSession() {
     }, 1000);
 }
 
-// Log data
+// Modified logData to use accumulated values
 function logData() {
     if (!isSessionActive) return;
 
     const currentTime = Date.now();
-    const kineticStress = calculateKineticStress(previousLandmarks, 1);
+    
+    // Calculate average kinetic stress over the logging interval
+    const avgKineticStress = kineticStressSampleCount > 0 ? 
+        accumulatedKineticStress / kineticStressSampleCount : 0;
+    
+    // Reset accumulators
+    accumulatedKineticStress = 0;
+    kineticStressSampleCount = 0;
+
+    // Calculate other metrics
     const posturalTension = calculatePosturalTension(previousLandmarks);
     const engagementScore = calculateEngagementScore();
-    const masterStressScore = calculateMasterStressScore(kineticStress, posturalTension, engagementScore);
+    const masterStressScore = calculateMasterStressScore(avgKineticStress, posturalTension, engagementScore);
 
     const dataPoint = {
         timestamp: currentTime,
-        kineticStress: kineticStress,
+        kineticStress: avgKineticStress,
         posturalTension: posturalTension,
         engagementScore: engagementScore,
         masterStressScore: masterStressScore,
-        handToFaceCount: handToFaceCount
+        handToFaceCount: handToFaceCount,
+        hasLegMovement: avgKineticStress > 30,
+        hasHandMovement: avgKineticStress > 20,
+        hasHandToFace: handToFaceCount > 0
     };
 
     sessionData.push(dataPoint);
@@ -566,6 +690,30 @@ function logData() {
     // Keep only last 5 minutes of data (300 seconds)
     if (sessionData.length > 300) {
         sessionData.shift();
+    }
+    
+    // Update the current metrics for real-time display
+    updateCurrentMetrics(masterStressScore, avgKineticStress, posturalTension, engagementScore);
+}
+
+function updateCurrentMetrics(masterStress, kinetic, postural, engagement) {
+    // Update status indicator
+    if (currentTime - lastStatusUpdate > STATUS_UPDATE_INTERVAL) {
+        updateStatusIndicator(masterStress);
+    }
+    
+    // Update real-time prompt
+    updateRealTimePrompt(masterStress, kinetic, postural, engagement);
+    
+    // Update current metrics display if it exists
+    const currentMetricsElement = document.getElementById('current-metrics');
+    if (currentMetricsElement) {
+        currentMetricsElement.innerHTML = `
+            <div>Kinetic: ${Math.round(kinetic)}</div>
+            <div>Postural: ${Math.round(postural)}</div>
+            <div>Engagement: ${Math.round(engagement)}</div>
+            <div>Master: ${Math.round(masterStress)}</div>
+        `;
     }
 }
 
@@ -579,27 +727,53 @@ function initializeChart() {
 
     const labels = sessionData.map((_, index) => `${index}s`);
     const stressScores = sessionData.map(data => data.masterStressScore);
+    const kineticScores = sessionData.map(data => data.kineticStress);
+    const posturalScores = sessionData.map(data => data.posturalTension);
 
     stressChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
-            datasets: [{
-                label: 'Stress Score',
-                data: stressScores,
-                borderColor: '#0096FF',
-                backgroundColor: 'rgba(0, 150, 255, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4
-            }]
+            datasets: [
+                {
+                    label: 'Master Stress Score',
+                    data: stressScores,
+                    borderColor: '#FF6384',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4
+                },
+                {
+                    label: 'Kinetic Stress',
+                    data: kineticScores,
+                    borderColor: '#36A2EB',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    borderWidth: 1,
+                    fill: false,
+                    tension: 0.4
+                },
+                {
+                    label: 'Postural Tension',
+                    data: posturalScores,
+                    borderColor: '#FFCE56',
+                    backgroundColor: 'rgba(255, 206, 86, 0.1)',
+                    borderWidth: 1,
+                    fill: false,
+                    tension: 0.4
+                }
+            ]
         },
         options: {
             responsive: true,
             plugins: {
                 title: {
                     display: true,
-                    text: 'Stress Score Over Time'
+                    text: 'Stress Metrics Over Time'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
                 }
             },
             scales: {
@@ -628,17 +802,26 @@ function initializeChart() {
 function updateAnalyticsSummary() {
     if (sessionData.length === 0) return;
 
-    // Calculate percentages
-    const fidgetingTime = sessionData.filter(data => data.kineticStress > 50).length;
-    const tensionTime = sessionData.filter(data => data.posturalTension > 50).length;
-    const avoidanceTime = sessionData.filter(data => data.engagementScore > 50).length;
-    const avgStress = sessionData.reduce((sum, data) => sum + data.masterStressScore, 0) / sessionData.length;
+    // Calculate percentages with more appropriate thresholds
+    const fidgetingTime = sessionData.filter(data => data.kineticStress >= 20).length;
+    const tensionTime = sessionData.filter(data => data.masterStressScore >= 60).length;
+    const avoidanceTime = sessionData.filter(data => data.engagementScore > 40).length;
+    const highStressTime = sessionData.filter(data => data.masterStressScore > 60).length;
+    
+    // Calculate average stress with more weight on recent data
+    const recentData = sessionData.slice(-60); // Last minute
+    const avgStress = recentData.reduce((sum, data) => sum + data.masterStressScore, 0) / recentData.length;
+    
+    // Calculate peak stress
+    const peakStress = Math.max(...sessionData.map(data => data.masterStressScore));
 
-    // Update display
+    // Update display with more meaningful metrics
     document.getElementById('fidgeting-percentage').textContent = `${Math.round((fidgetingTime / sessionData.length) * 100)}%`;
     document.getElementById('tension-percentage').textContent = `${Math.round((tensionTime / sessionData.length) * 100)}%`;
     document.getElementById('avoidance-percentage').textContent = `${Math.round((avoidanceTime / sessionData.length) * 100)}%`;
+    document.getElementById('high-stress-percentage').textContent = `${Math.round((highStressTime / sessionData.length) * 100)}%`;
     document.getElementById('average-stress').textContent = Math.round(avgStress);
+    document.getElementById('peak-stress').textContent = Math.round(peakStress);
 
     // Update session info
     const sessionName = document.getElementById('session-name').value || 'Unnamed Session';
@@ -647,19 +830,20 @@ function updateAnalyticsSummary() {
     document.getElementById('analytics-session-name').textContent = sessionName;
     document.getElementById('analytics-session-details').textContent = sessionDetails;
 
-    // Generate insights
-    generateInsights(fidgetingTime, tensionTime, avoidanceTime, avgStress);
+    // Generate insights with better context
+    generateInsights(fidgetingTime, tensionTime, avoidanceTime, avgStress, peakStress, highStressTime);
 }
 
 // Generate insights
-function generateInsights(fidgetingTime, tensionTime, avoidanceTime, avgStress) {
+function generateInsights(fidgetingTime, tensionTime, avoidanceTime, avgStress, peakStress, highStressTime) {
     const insightsContent = document.getElementById('insights-content');
     let insights = '';
 
-    if (avgStress < 30) {
-        insights = '<p><strong>Overall Assessment:</strong> The session showed low stress levels throughout. The participant maintained good posture and engagement.</p>';
+    // Consider both average and peak stress for better assessment
+    if (avgStress < 30 && peakStress < 50) {
+        insights = '<p><strong>Overall Assessment:</strong> The session showed consistently low stress levels. The participant maintained good posture and engagement throughout.</p>';
         insights += '<p><strong>Recommendations:</strong> Continue with current approach. The participant appears comfortable and engaged in the session.</p>';
-    } else if (avgStress < 70) {
+    } else if (avgStress < 50 && peakStress < 70) {
         if (fidgetingTime > tensionTime && fidgetingTime > avoidanceTime) {
             insights = '<p><strong>Overall Assessment:</strong> The session showed moderate stress levels with notable fidgeting behavior. This may indicate restlessness or anxiety.</p>';
             insights += '<p><strong>Recommendations:</strong> Consider incorporating movement breaks or interactive activities to channel restless energy constructively.</p>';
@@ -671,7 +855,14 @@ function generateInsights(fidgetingTime, tensionTime, avoidanceTime, avgStress) 
             insights += '<p><strong>Recommendations:</strong> Consider varying the session format and incorporating more interactive elements to improve engagement.</p>';
         }
     } else {
-        insights = '<p><strong>Overall Assessment:</strong> The session showed high stress levels throughout. The participant may be experiencing significant anxiety or discomfort.</p>';
+        insights = `<p><strong>Overall Assessment:</strong> The session showed high stress levels (peak: ${Math.round(peakStress)}). `;
+        
+        if (highStressTime > sessionData.length * 0.5) {
+            insights += 'The participant was tense for more than half of the session.</p>';
+        } else {
+            insights += 'While the average stress was moderate, there were periods of significant tension.</p>';
+        }
+        
         insights += '<p><strong>Recommendations:</strong> Consider pausing the session and addressing immediate concerns. A different approach or referral to additional support services may be warranted.</p>';
     }
 
