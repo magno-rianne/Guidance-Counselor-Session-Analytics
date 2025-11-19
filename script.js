@@ -502,9 +502,9 @@ function calculateMasterStressScore(kineticStress, posturalTension, engagementSc
     
     // Apply a non-linear scaling to amplify higher stress values
     let amplifiedScore;
-    if (weightedScore < CALM) {
+    if (weightedScore < MOVEMENT_THRESHOLDS.CALM) {
         amplifiedScore = weightedScore * 0.8; // Slightly reduce low scores
-    } else if (weightedScore < VIGILANCE) {
+    } else if (weightedScore < MOVEMENT_THRESHOLDS.VIGILANCE) {
         amplifiedScore = weightedScore * 1.2; // Amplify mid-range scores
     } else {
         amplifiedScore = weightedScore * 1.5; // Significantly amplify high scores
