@@ -697,6 +697,8 @@ function logData() {
 }
 
 function updateCurrentMetrics(masterStress, kinetic, postural, engagement) {
+
+    const currentTime = Date.now();
     // Update status indicator
     if (currentTime - lastStatusUpdate > STATUS_UPDATE_INTERVAL) {
         updateStatusIndicator(masterStress);
@@ -805,23 +807,23 @@ function updateAnalyticsSummary() {
     // Calculate percentages with more appropriate thresholds
     const fidgetingTime = sessionData.filter(data => data.kineticStress >= 20).length;
     const tensionTime = sessionData.filter(data => data.masterStressScore >= 60).length;
-    const avoidanceTime = sessionData.filter(data => data.engagementScore > 40).length;
+    const calmTime = sessionData.filter(data => data.masterStressScore <= 30).length;
     const highStressTime = sessionData.filter(data => data.masterStressScore > 60).length;
     
     // Calculate average stress with more weight on recent data
     const recentData = sessionData.slice(-60); // Last minute
-    const avgStress = recentData.reduce((sum, data) => sum + data.masterStressScore, 0) / recentData.length;
-    
+    const avgStress = sessionData.reduce((sum, data) => sum + data.masterStressScore, 0) / sessionData.length;
+    console.log('Average Stress:', Math.round(avgStress));
+    console.log('sessionData length:', sessionData.length);
+    console.log('average-stress-percentage:', document.getElementById('average-stress-percentage'));
     // Calculate peak stress
     const peakStress = Math.max(...sessionData.map(data => data.masterStressScore));
 
     // Update display with more meaningful metrics
     document.getElementById('fidgeting-percentage').textContent = `${Math.round((fidgetingTime / sessionData.length) * 100)}%`;
     document.getElementById('tension-percentage').textContent = `${Math.round((tensionTime / sessionData.length) * 100)}%`;
-    document.getElementById('avoidance-percentage').textContent = `${Math.round((avoidanceTime / sessionData.length) * 100)}%`;
-    document.getElementById('high-stress-percentage').textContent = `${Math.round((highStressTime / sessionData.length) * 100)}%`;
-    document.getElementById('average-stress').textContent = Math.round(avgStress);
-    document.getElementById('peak-stress').textContent = Math.round(peakStress);
+    document.getElementById('avoidance-percentage').textContent = `${Math.round((calmTime / sessionData.length) * 100)}%`;
+    document.getElementById('average-stress-percentage').textContent = `${Math.round(avgStress)}%`;
 
     // Update session info
     const sessionName = document.getElementById('session-name').value || 'Unnamed Session';
@@ -831,7 +833,7 @@ function updateAnalyticsSummary() {
     document.getElementById('analytics-session-details').textContent = sessionDetails;
 
     // Generate insights with better context
-    generateInsights(fidgetingTime, tensionTime, avoidanceTime, avgStress, peakStress, highStressTime);
+    generateInsights(fidgetingTime, tensionTime, calmTime, avgStress, peakStress, highStressTime);
 }
 
 // Generate insights
