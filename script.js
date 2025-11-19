@@ -27,9 +27,9 @@ let headYawAngle = 0;
 
 // Weights for stress score calculation - more balanced
 const WEIGHTS = {
-    KINETIC: 0.6,      // Increased from 0.3 to 0.7
-    POSTURAL: 0.2,    // Reduced from 0.3 to 0.15
-    ENGAGEMENT: 0.2   // Reduced from 0.4 to 0.15
+    KINETIC: 0.6,      
+    POSTURAL: 0.2,    
+    ENGAGEMENT: 0.2   
 };
 
 const MOVEMENT_THRESHOLDS = {
@@ -502,9 +502,9 @@ function calculateMasterStressScore(kineticStress, posturalTension, engagementSc
     
     // Apply a non-linear scaling to amplify higher stress values
     let amplifiedScore;
-    if (weightedScore < 30) {
+    if (weightedScore < CALM) {
         amplifiedScore = weightedScore * 0.8; // Slightly reduce low scores
-    } else if (weightedScore < 60) {
+    } else if (weightedScore < VIGILANCE) {
         amplifiedScore = weightedScore * 1.2; // Amplify mid-range scores
     } else {
         amplifiedScore = weightedScore * 1.5; // Significantly amplify high scores
